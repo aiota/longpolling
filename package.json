@@ -1,0 +1,32 @@
+{
+	"name": "aiota-longpolling",
+	"version": "0.0.1",
+	"description": "AIoTA Long Polling Worker",
+	"main": "longpolling.js",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/aiota/longpolling.git"
+	},
+	"author": "Arthur Viegers <arthur@mongodb.com>",
+	"contributors": [
+		{
+			"name": [ "AIoTA Team" ],
+			"email": [ "arthur@mongodb.com", "pattyn.kurt@gmail.com" ]
+		}
+	],
+	"licenses": [
+		{
+			"type": "MIT",
+			"url": "https://github.com/aiota/longpolling/LICENSE"
+		}
+	],
+  	"dependencies": {
+		"aiota-utils": ">=0.0.1",
+		"amqp-rpc": ">=0.0.8",
+		"jsonschema": ">=1.0.0",
+		"mongodb": ">=1.4.10"
+	},
+	"bugs": {
+		"url": "https://github.com/iota/issues"
+	}
+}

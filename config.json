@@ -1,0 +1,17 @@
+{
+	"database": {
+		"host": "localhost",
+		"name": "qaweb",
+		"port": 27017
+	},
+	"amqp": {
+		"host": "localhost",
+		"port": 5672,
+		"login": "guest",
+		"password": "guest",
+		"connectionTimeout": 0,
+		"authMechanism": "AMQPLAIN",
+		"vhost": "/",
+		"ssl": { "enabled" : false }
+	}
+}
