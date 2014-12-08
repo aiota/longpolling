@@ -89,9 +89,11 @@ function getDeviceMsg(db, msg, tokens, callback)
 			return;
 		}
 		
+		var encryptionMethod = "none";
+		
 		var actions = [];
 		
-		var stream = collection.find({ deviceId: msg.header.deviceId, appId: msg.header.tokencardId, status: { $lt: 10 } }, { requestId: 1, action: 1, params: 1, status: 1, timeoutAt: 1, resends: 1 }).sort({ "progress.0.timestamp": 1 }).limit(15).stream();
+		var stream = collection.find({ deviceId: msg.header.deviceId, "encryption.tokencardId": msg.header.encryption.tokencardId, status: { $lt: 10 } }, { encryption: 1, requestId: 1, action: 1, params: 1, status: 1, timeoutAt: 1, resends: 1 }).sort({ "progress.0.timestamp": 1 }).limit(15).stream();
 		
 		stream.on("error", function (err) {
 			callback({ error: err, errorCode: 200005 });
@@ -99,6 +101,13 @@ function getDeviceMsg(db, msg, tokens, callback)
 		});
 
 		stream.on("data", function(doc) {
+			switch (encryptionMethod) {
+			case "none":		encryptionMethod = doc.encryption.method;
+								break;
+			case "hmacsha256":	encryptionMethod = (doc.encryptionMethod == "aes256gcm" ? "aes256gcm" : "hmacsha256");
+								break;
+			}
+
 			actions.push(doc);
 		});
 
@@ -152,7 +161,7 @@ function getDeviceMsg(db, msg, tokens, callback)
 				
 			if ((reply.length > 0) || (msg.body.timeout == 0)) {
 				var nonce = 0;
-				aiota.respond(null, msg.header.deviceId, { group: "response", type: "poll" }, msg.header.tokencardId, tokens, nonce, reply, function(response) {
+				aiota.respond(null, msg.header.deviceId, { group: "response", type: "poll" }, encryptionMethod, msg.header.encryption.tokencardId, tokens, nonce, reply, function(response) {
 					callback(response);
 				});
 			}
@@ -186,7 +195,14 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 							type: { type: "string", enum: [ "poll" ], required: true },
 							timestamp: { type: "integer", minimum: 0, required: true },
 							ttl: { type: "integer", minimum: 0, required: true },
-							tokencardId: { type: "string", required: true },
+							encryption: {
+								type: "object",
+								properties: {
+									method: { type: "string", required: true },
+									tokencardId: { type: "string", required: true }
+								}
+							},
+							required: true
 						},
 						required: true
 					},
@@ -216,8 +232,8 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 						}
 						else {
 							if (device) {
-								if (device.apps.hasOwnProperty(msg.header.tokencardId)) {
-									var app = device.apps[msg.header.tokencardId];
+								if (device.apps.hasOwnProperty(msg.header.encryption.tokencardId)) {
+									var app = device.apps[msg.header.encryption.tokencardId];
 									
 									schema = {
 										type: "object",
@@ -253,7 +269,7 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 												return;
 											}
 											
-											collection.findOne({ _id: msg.header.tokencardId }, { _id: 0, tokens: 1 }, function(err, appl) {
+											collection.findOne({ _id: msg.header.encryption.tokencardId }, { _id: 0, tokens: 1 }, function(err, appl) {
 												if (err) {
 													callback({ error: err, errorCode: 200002 });
 													return;
