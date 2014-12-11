@@ -1,6 +1,6 @@
 {
 	"name": "aiota-longpolling",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "AIoTA Long Polling Worker",
 	"main": "longpolling.js",
 	"repository": {
