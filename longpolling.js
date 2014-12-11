@@ -200,9 +200,9 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 								properties: {
 									method: { type: "string", required: true },
 									tokencardId: { type: "string", required: true }
-								}
-							},
-							required: true
+								},
+								required: true
+							}
 						},
 						required: true
 					},
@@ -212,7 +212,8 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 							timeout: { type: "integer", minimum: 0, required: true }
 						},
 						required: true
-					}
+					},
+					nonce: { type: "integer", minimum: 0, required: true }
 				}
 			};
 		
