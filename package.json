@@ -1,7 +1,7 @@
 {
 	"name": "aiota-longpolling",
-	"version": "0.0.3",
-	"description": "AIoTA Long Polling Worker",
+	"version": "0.0.4",
+	"description": "AiotA Long Polling Micro Process",
 	"main": "longpolling.js",
 	"repository": {
 		"type": "git",
@@ -10,7 +10,7 @@
 	"author": "Arthur Viegers <arthur@mongodb.com>",
 	"contributors": [
 		{
-			"name": [ "AIoTA Team" ],
+			"name": [ "AiotA Team" ],
 			"email": [ "arthur@mongodb.com", "pattyn.kurt@gmail.com" ]
 		}
 	],

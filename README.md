@@ -1,4 +1,4 @@
 server
 ======
 
-AIoTA Long Polling Process
+AiotA Long Polling Process

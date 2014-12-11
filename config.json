@@ -1,4 +1,6 @@
 {
+	"processName": "longpolling.js",
+	"serverName": "localhost",
 	"database": {
 		"host": "localhost",
 		"name": "qaweb",
