@@ -176,14 +176,14 @@ function getDeviceMsg(db, msg, tokens, callback)
 
 MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.port + "/aiota", function(err, aiotaDB) {
 	if (err) {
-		aiota.log(config.processName, err);
+		aiota.log(config.processName, config.serverName, aiotaDB, err);
 	}
 	else {
 		aiota.processHeartbeat(config.processName, config.serverName, aiotaDB);
 		
 		MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.port + "/" + config.database.name, function(err, dbConnection) {
 			if (err) {
-				aiota.log(config.processName, err);
+				aiota.log(config.processName, config.serverName, aiotaDB, err);
 			}
 			else {
 				db = dbConnection;
