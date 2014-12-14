@@ -320,7 +320,9 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 		  
 				var cl = { group: "longpolling" };
 		
-				rpc.on(aiota.getQueue(cl), handleLongPollingRequest(msg, callback));
+				rpc.on(aiota.getQueue(cl), function(msg, callback) {
+					handleLongPollingRequest(msg, callback)
+				});
 	
 				setInterval(function() { aiota.heartbeat(config.processName, config.serverName, aiotaDB); }, 10000);
 
