@@ -1,6 +1,6 @@
 {
 	"name": "aiota-longpolling",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"description": "AiotA Long Polling Micro Process",
 	"main": "longpolling.js",
 	"repository": {
