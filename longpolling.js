@@ -102,10 +102,10 @@ function getDeviceMsg(db, msg, tokens, callback)
 
 		stream.on("data", function(doc) {
 			switch (encryptionMethod) {
-			case "none":		encryptionMethod = doc.encryption.method;
-								break;
-			case "hmacsha256":	encryptionMethod = (doc.encryptionMethod == "aes256gcm" ? "aes256gcm" : "hmacsha256");
-								break;
+			case "none":			encryptionMethod = doc.encryption.method;
+									break;
+			case "hmac-sha-256":	encryptionMethod = (doc.encryptionMethod == "aes-256-gcm" ? "aes-256-gcm" : "hmac-sha-256");
+									break;
 			}
 
 			actions.push(doc);
@@ -158,7 +158,11 @@ function getDeviceMsg(db, msg, tokens, callback)
 				
 				process.nextTick(updateActions);		
 			}
-				
+			else {
+				// Set encryption method to the method in the long polling request
+				encryptionMethod = msg.header.encryption.method;
+			}
+			
 			if ((reply.length > 0) || (msg.body.timeout == 0)) {
 				var nonce = 0;
 				aiota.respond(null, msg.header.deviceId, { group: "response", type: "poll" }, encryptionMethod, msg.header.encryption.tokencardId, tokens, nonce, reply, function(response) {
@@ -321,7 +325,7 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 				var cl = { group: "longpolling" };
 		
 				rpc.on(aiota.getQueue(cl), function(msg, callback) {
-					handleLongPollingRequest(msg, callback)
+					handleLongPollingRequest(msg, callback);
 				});
 	
 				setInterval(function() { aiota.heartbeat(config.processName, config.serverName, aiotaDB); }, 10000);
