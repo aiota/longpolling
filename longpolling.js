@@ -174,6 +174,138 @@ function getDeviceMsg(db, msg, tokens, callback)
 	});
 }
 
+function handleLongPollingRequest(msg, callback)
+{
+	var schema = { 
+		type: "object",
+		properties: {
+			header: {
+				type: "object",
+				properties: {
+					requestId: { type: "string", required: true },
+					deviceId: { type: "string", required: true },
+					type: { type: "string", enum: [ "poll" ], required: true },
+					timestamp: { type: "integer", minimum: 0, required: true },
+					ttl: { type: "integer", minimum: 0, required: true },
+					encryption: {
+						type: "object",
+						properties: {
+							method: { type: "string", required: true },
+							tokencardId: { type: "string", required: true }
+						},
+						required: true
+					}
+				},
+				required: true
+			},
+			"body": {
+				type: "object",
+				properties: { 
+					timeout: { type: "integer", minimum: 0, required: true }
+				},
+				required: true
+			},
+			nonce: { type: "integer", minimum: 0, required: true }
+		}
+	};
+
+	var v = validate(msg, schema);
+
+	if (v.isValid) {
+		db.collection("devices", function(err, collection) {
+			if (err) {
+				callback({ error: err });
+				return;
+			}
+			
+			collection.findOne({ _id: msg.header.deviceId }, { _id: 0, apps: 1 }, function(err, device) {
+				if (err) {
+					callback({ error: err });
+					return;
+				}
+				else {
+					if (device) {
+						if (device.apps.hasOwnProperty(msg.header.encryption.tokencardId)) {
+							var app = device.apps[msg.header.encryption.tokencardId];
+							
+							schema = {
+								type: "object",
+								properties: {
+									name: { type: "string", required: true },
+									version: { 
+										type: "object", 
+										properties: {
+											major: { type: "integer", required: true },
+											minor: { type: "integer", required: true }
+										},
+										required: true
+									},
+									status: { type: "string", enum: [ "pending", "registered" ], required: true },
+									session: {
+										type: "object",
+										properties: {
+											id: { type: "string", required: true },
+											timeoutAt: { type: "integer", minimum: 0, required: true }
+										},
+										required: true
+									},
+									lastRequest: { type: "integer", minimum: 0, required: true },
+								}
+							};
+			
+							v = validate(app, schema);
+			
+							if (v.isValid) {
+								db.collection("applications", function(err, collection) {
+									if (err) {
+										callback({ error: err, errorCode: 200001 });
+										return;
+									}
+									
+									collection.findOne({ _id: msg.header.encryption.tokencardId }, { _id: 0, tokens: 1 }, function(err, appl) {
+										if (err) {
+											callback({ error: err, errorCode: 200002 });
+											return;
+										}
+										else {
+											if (appl) {
+												if (appl.hasOwnProperty("tokens")) {
+													getDeviceMsg(db, msg, appl.tokens, function(result) {
+														callback(result);
+													});
+												}
+												else {
+													callback({ error: "The application tokens are not defined.", errorCode: 100023 });
+												}
+											}
+											else {
+												callback({ error: "The application is not defined.", errorCode: 100016 });
+											}
+										}
+									});
+								});
+							}
+							else {
+								callback({ error: v.error, errorCode: 100003 });
+							}				
+						}
+						else {
+							callback({ warning: "This application has not been registered. Please register first.", errorCode: 100024 });
+						}
+					}
+					else {
+						callback({ warning: "The device-id does not exist. Please register first.", errorCode: 100025 });
+					}
+				}
+			});			
+		});
+	}
+	else {
+		// Invalid long polling message
+		callback({ error: v.error, errorCode: 100003 });
+	}
+}
+
 MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.port + "/aiota", function(err, aiotaDB) {
 	if (err) {
 		aiota.log(config.processName, config.serverName, aiotaDB, err);
@@ -190,138 +322,15 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 		  
 				var cl = { group: "longpolling" };
 		
-				rpc.on(aiota.getQueue(cl), function(msg, callback) {
-					var schema = { 
-						type: "object",
-						properties: {
-							header: {
-								type: "object",
-								properties: {
-									requestId: { type: "string", required: true },
-									deviceId: { type: "string", required: true },
-									type: { type: "string", enum: [ "poll" ], required: true },
-									timestamp: { type: "integer", minimum: 0, required: true },
-									ttl: { type: "integer", minimum: 0, required: true },
-									encryption: {
-										type: "object",
-										properties: {
-											method: { type: "string", required: true },
-											tokencardId: { type: "string", required: true }
-										},
-										required: true
-									}
-								},
-								required: true
-							},
-							"body": {
-								type: "object",
-								properties: { 
-									timeout: { type: "integer", minimum: 0, required: true }
-								},
-								required: true
-							},
-							nonce: { type: "integer", minimum: 0, required: true }
-						}
-					};
-				
-					var v = validate(msg, schema);
-				
-					if (v.isValid) {
-						db.collection("devices", function(err, collection) {
-							if (err) {
-								callback({ error: err });
-								return;
-							}
-							
-							collection.findOne({ _id: msg.header.deviceId }, { _id: 0, apps: 1 }, function(err, device) {
-								if (err) {
-									callback({ error: err });
-									return;
-								}
-								else {
-									if (device) {
-										if (device.apps.hasOwnProperty(msg.header.encryption.tokencardId)) {
-											var app = device.apps[msg.header.encryption.tokencardId];
-											
-											schema = {
-												type: "object",
-												properties: {
-													name: { type: "string", required: true },
-													version: { 
-														type: "object", 
-														properties: {
-															major: { type: "integer", required: true },
-															minor: { type: "integer", required: true }
-														},
-														required: true
-													},
-													status: { type: "string", enum: [ "pending", "registered" ], required: true },
-													session: {
-														type: "object",
-														properties: {
-															id: { type: "string", required: true },
-															timeoutAt: { type: "integer", minimum: 0, required: true }
-														},
-														required: true
-													},
-													lastRequest: { type: "integer", minimum: 0, required: true },
-												}
-											};
-							
-											v = validate(app, schema);
-							
-											if (v.isValid) {
-												db.collection("applications", function(err, collection) {
-													if (err) {
-														callback({ error: err, errorCode: 200001 });
-														return;
-													}
-													
-													collection.findOne({ _id: msg.header.encryption.tokencardId }, { _id: 0, tokens: 1 }, function(err, appl) {
-														if (err) {
-															callback({ error: err, errorCode: 200002 });
-															return;
-														}
-														else {
-															if (appl) {
-																if (appl.hasOwnProperty("tokens")) {
-																	getDeviceMsg(db, msg, appl.tokens, function(result) {
-																		callback(result);
-																	});
-																}
-																else {
-																	callback({ error: "The application tokens are not defined.", errorCode: 100023 });
-																}
-															}
-															else {
-																callback({ error: "The application is not defined.", errorCode: 100016 });
-															}
-														}
-													});
-												});
-											}
-											else {
-												callback({ error: v.error, errorCode: 100003 });
-											}				
-										}
-										else {
-											callback({ warning: "This application has not been registered. Please register first.", errorCode: 100024 });
-										}
-									}
-									else {
-										callback({ warning: "The device-id does not exist. Please register first.", errorCode: 100025 });
-									}
-								}
-							});			
-						});
-					}
-					else {
-						// Invalid long polling message
-						callback({ error: v.error, errorCode: 100003 });
-					}
-				});
+				rpc.on(aiota.getQueue(cl), handleLongPollingRequest(msg, callback));
 	
 				setInterval(function() { aiota.processHeartbeat(config.processName, config.serverName, aiotaDB); }, 10000);
+
+				process.on("SIGTERM", function() {
+					aiota.terminateProcess(config.processName, config.serverName, db, function() {
+						process.exit(1);
+					});
+				});
 			}
 		});
 	}
