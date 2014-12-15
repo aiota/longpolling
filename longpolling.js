@@ -331,7 +331,7 @@ MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.
 				setInterval(function() { aiota.heartbeat(config.processName, config.serverName, aiotaDB); }, 10000);
 
 				process.on("SIGTERM", function() {
-					aiota.terminateProcess(config.processName, config.serverName, db, function() {
+					aiota.terminateProcess(config.processName, config.serverName, aiotaDB, function() {
 						process.exit(1);
 					});
 				});
