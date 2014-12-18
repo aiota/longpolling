@@ -1,10 +1,11 @@
 var aiota = require("aiota-utils");
 var jsonValidate = require("jsonschema").validate;
+var amqp = require("amqp-rpc");
 var MongoClient = require("mongodb").MongoClient;
 var ObjectID = require("mongodb").ObjectID;
-var config = require("./config");
-var rpc = require("amqp-rpc").factory({ url: "amqp://" + config.amqp.login + ":" + config.amqp.password + "@" + config.amqp.host + ":" + config.amqp.port });
 
+var config = null;
+var processName = "longpolling.js";
 var actionUpdateQueue = [];
 var db = null;
 
@@ -310,30 +311,43 @@ function handleLongPollingRequest(msg, callback)
 	}
 }
 
-MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.port + "/aiota", function(err, aiotaDB) {
+var args = process.argv.slice(2);
+ 
+MongoClient.connect("mongodb://" + args[0] + ":" + args[1] + "/" + args[2], function(err, aiotaDB) {
 	if (err) {
-		aiota.log(config.processName, config.serverName, aiotaDB, err);
+		aiota.log(processName, "", null, err);
 	}
 	else {
-		MongoClient.connect("mongodb://" + config.database.host + ":" + config.database.port + "/" + config.database.name, function(err, dbConnection) {
-			if (err) {
-				aiota.log(config.processName, config.serverName, aiotaDB, err);
+		aiota.getConfig(aiotaDB, function(c) {
+			if (c == null) {
+				aiota.log(processName, "", aiotaDB, "Error getting config from database");
 			}
 			else {
-				db = dbConnection;
-		  
-				var cl = { group: "longpolling" };
-		
-				rpc.on(aiota.getQueue(cl), function(msg, callback) {
-					handleLongPollingRequest(msg, callback);
-				});
-	
-				setInterval(function() { aiota.heartbeat(config.processName, config.serverName, aiotaDB); }, 10000);
+				config = c;
 
-				process.on("SIGTERM", function() {
-					aiota.terminateProcess(config.processName, config.serverName, aiotaDB, function() {
-						process.exit(1);
-					});
+				MongoClient.connect("mongodb://" + config.database.host + ":" + config.ports.mongodb + "/" + config.database.name, function(err, db) {
+					if (err) {
+						aiota.log(processName, config.serverName, aiotaDB, err);
+					}
+					else {
+						db = dbConnection;
+				  
+						var cl = { group: "longpolling" };
+				
+						var rpc = amqp.factory({ url: "amqp://" + config.amqp.login + ":" + config.amqp.password + "@" + config.amqp.host + ":" + config.amqp.port });
+		
+						rpc.on(aiota.getQueue(cl), function(msg, callback) {
+							handleLongPollingRequest(msg, callback);
+						});
+			
+						setInterval(function() { aiota.heartbeat(processName, config.serverName, aiotaDB); }, 10000);
+		
+						process.on("SIGTERM", function() {
+							aiota.terminateProcess(processName, config.serverName, aiotaDB, function() {
+								process.exit(1);
+							});
+						});
+					}
 				});
 			}
 		});
